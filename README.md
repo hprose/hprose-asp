@@ -46,34 +46,34 @@ You don't need use the JScript source files. You only need include `hprose-asp.j
 
 Using it in VBScript like this:
 
-```asp
+```html
 <%@ CODEPAGE=65001 %>
 <script runat="server" language="JScript" src="hprose/hprose-asp.js"></script>
 <%
-Function hello(name)
-hello = "Hello " & name & "!"
-End Function
-Dim server
-Set server = HproseHttpServer.create()
-server.setDebugEnabled(true)
-server.addFunction GetRef("hello")
-server.start
+    Function hello(name)
+    hello = "Hello " & name & "!"
+    End Function
+    Dim hserver
+    Set hserver = HproseHttpServer.create()
+    hserver.setDebugEnabled(true)
+    hserver.addFunction GetRef("hello")
+    hserver.start
 %>
 ```
 
 Using it in JScript like this:
 
-```asp
+```html
 <%@ CODEPAGE=65001 %>
 <script runat="server" language="JScript" src="hprose/hprose-asp.js"></script>
 <script runat="server" language="JScript">
-function hello(name) {
-    return "Hello " + name + "!";
-}
-var server = new HproseHttpServer();
-server.setDebugEnabled(true);
-server.addFunction(hello);
-server.start();
+    function hello(name) {
+        return "Hello " + name + "!";
+    }
+    var hserver = new HproseHttpServer();
+    hserver.setDebugEnabled(true);
+    hserver.addFunction(hello);
+    hserver.start();
 </script>
 ```
 
@@ -81,26 +81,26 @@ server.start();
 
 Using it in VBScript like this:
 
-```asp
+```html
 <%@ CODEPAGE=65001 %>
 <script runat="server" language="JScript" src="hprose/hprose-asp.js"></script>
 <%
-Response.CodePage = 65001
-Response.CharSet = "UTF-8"
-Set client = HproseHttpClient.create("http://127.0.0.1/server.asp")
-Response.Write client.hello("World")
+    Response.CodePage = 65001
+    Response.CharSet = "UTF-8"
+    Set client = HproseHttpClient.create("http://127.0.0.1/server.asp")
+    Response.Write client.hello("World")
 %>
 ```
 
 Using it in JScript like this:
 
-```asp
+```html
 <%@ CODEPAGE=65001 %>
 <script runat="server" language="JScript" src="hprose/hprose-asp.js"></script>
 <script runat="server" language="JScript">
-Response.CodePage = 65001;
-Response.CharSet = "UTF-8";
-var client = new HproseHttpClient("http://127.0.0.1/server.asp");
-Response.write(client.hello("World"));
+    Response.CodePage = 65001;
+    Response.CharSet = "UTF-8";
+    var client = new HproseHttpClient("http://127.0.0.1/server.asp");
+    Response.write(client.hello("World"));
 </script>
 ```
