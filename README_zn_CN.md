@@ -77,7 +77,7 @@
 </script>
 ```
 
-### Client
+### 客户端
 
 使用 VBScript 来写是这样的：
 
