@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io stream library for JavaScript.               *
  *                                                        *
- * LastModified: Feb 17, 2014                             *
+ * LastModified: Mar 8, 2014                              *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -396,10 +396,8 @@ var HproseRawReader, HproseReader, HproseWriter;
                 if (s.length === 0) return 0;
                 return parseInt(s, 10);
             }
-            function unserialize(tag) {
-                if (tag === undefined) {
-                    tag = stream.getc();
-                }
+            function unserialize() {
+                var tag = stream.getc();
                 switch (tag) {
                 case '0': return 0;
                 case '1': return 1;
@@ -554,6 +552,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readDate() {
                 var tag = stream.getc();
                 switch (tag) {
+                case HTags.TagNull: return null;
                 case HTags.TagDate: return readDateWithoutTag();
                 case HTags.TagRef: return readRef();
                 default: unexpectedTag(tag);
@@ -591,6 +590,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readTime() {
                 var tag = stream.getc();
                 switch (tag) {
+                case HTags.TagNull: return null;
                 case HTags.TagTime: return readTimeWithoutTag();
                 case HTags.TagRef: return readRef();
                 default: unexpectedTag(tag);
@@ -609,6 +609,9 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readString() {
                 var tag = stream.getc();
                 switch (tag) {
+                case HTags.TagNull: return null;
+                case HTags.TagEmpty: return '';
+                case HTags.TagUTF8Char: return stream.getc();
                 case HTags.TagString: return readStringWithoutTag();
                 case HTags.TagRef: return readRef();
                 default: unexpectedTag(tag);
@@ -624,6 +627,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readGuid() {
                 var tag = stream.getc();
                 switch (tag) {
+                case HTags.TagNull: return null;
                 case HTags.TagGuid: return readGuidWithoutTag();
                 case HTags.TagRef: return readRef();
                 default: unexpectedTag(tag);
@@ -643,6 +647,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readList() {
                 var tag = stream.getc();
                 switch (tag) {
+                case HTags.TagNull: return null;
                 case HTags.TagList: return readListWithoutTag();
                 case HTags.TagRef: return readRef();
                 default: unexpectedTag(tag);
@@ -668,6 +673,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readMap() {
                 var tag = stream.getc();
                 switch (tag) {
+                case HTags.TagNull: return null;
                 case HTags.TagMap: return readMapWithoutTag();
                 case HTags.TagRef: return readRef();
                 default: unexpectedTag(tag);
@@ -686,6 +692,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             function readObject() {
                 var tag = stream.getc();
                 switch(tag) {
+                case HTags.TagNull: return null;
                 case HTags.TagClass: readClass(); return readObject();
                 case HTags.TagObject: return readObjectWithoutTag();
                 case HTags.TagRef: return readRef();
