@@ -167,11 +167,11 @@ var HproseHttpClient = (function () {
         return '';
     }
 
-    function getResponse(xmlhttp, host, filter) {
+    function getResponse(xmlhttp, host, filter, client) {
         if (xmlhttp.status === 200) {
             var headers = xmlhttp.getAllResponseHeaders().split('\r\n');
             setCookie(headers, host);
-            return filter.inputFilter(xmlhttp.responseText, xmlhttp);
+            return filter.inputFilter(xmlhttp.responseText, client);
         }
         else {
             var error = xmlhttp.status + ':' +  xmlhttp.statusText;
@@ -181,7 +181,7 @@ var HproseHttpClient = (function () {
         }
     }
 
-    function post(url, header, data, proxy, proxyUsername, proxyPassword, timeout, filter, callback) {
+    function post(url, header, data, proxy, proxyUsername, proxyPassword, timeout, filter, client, callback) {
         var host, path, secure, p;
         if (url.substr(0, 7).toLowerCase() === 'http://') {
             secure = false;
@@ -217,7 +217,7 @@ var HproseHttpClient = (function () {
             xmlhttp.open('POST', url, true);
             xmlhttp.onreadystatechange = function() {
                 if (xmlhttp.readyState === 4) {
-                    callback(getResponse(xmlhttp, host, filter));
+                    callback(getResponse(xmlhttp, host, filter, client));
                 }
             };
         }
@@ -231,12 +231,12 @@ var HproseHttpClient = (function () {
         if (cookie !== '') {
             xmlhttp.setRequestHeader('Cookie', cookie);
         }
-        xmlhttp.send(filter.outputFilter(data, xmlhttp));
+        xmlhttp.send(filter.outputFilter(data, client));
         if (callback) {
             return xmlhttp;
         }
         else {
-            return getResponse(xmlhttp, host, filter);
+            return getResponse(xmlhttp, host, filter, client);
         }
     }
 
@@ -389,7 +389,7 @@ var HproseHttpClient = (function () {
         function useService(stub) {
             var response = post(m_url, m_header, HTags.TagEnd,
                                 m_proxy, m_proxyUsername, m_proxyPassword,
-                                m_timeout, m_filter);
+                                m_timeout, m_filter, self);
             var stream = new HStringInputStream(response);
             var hproseReader = new HReader(stream, true);
             var tag = hproseReader.checkTags(HTags.TagFunctions +
@@ -703,7 +703,7 @@ var HproseHttpClient = (function () {
                 var xhr_index = m_xhrs.length;
                  m_xhrs[xhr_index] = post(m_url, m_header, request,
                                m_proxy, m_proxyUsername, m_proxyPassword,
-                               m_timeout, m_filter, function(response) {
+                               m_timeout, m_filter, self, function(response) {
                     var result;
                     try {
                         result = getResult(response, func, args, resultMode);
@@ -725,7 +725,7 @@ var HproseHttpClient = (function () {
             else {
                 var response = post(m_url, m_header, request,
                                     m_proxy, m_proxyUsername, m_proxyPassword,
-                                    m_timeout, m_filter);
+                                    m_timeout, m_filter, self);
                 return getResult(response, func, args, resultMode);
             }
         }
