@@ -14,7 +14,7 @@
  *                                                        *
  * hprose common library for ASP.                         *
  *                                                        *
- * LastModified: Feb 17, 2014                             *
+ * LastModified: Mar 17, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -38,8 +38,8 @@ HproseException.prototype = new Error();
 HproseException.prototype.name = "HproseException";
 
 function HproseFilter() {
-    this.inputFilter = function(value) { return value; };
-    this.outputFilter = function(value) { return value; };
+    this.inputFilter = function(value, context) { return value; };
+    this.outputFilter = function(value, context) { return value; };
 }
 
 var HproseUtil = {

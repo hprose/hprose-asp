@@ -14,7 +14,7 @@
  *                                                        *
  * hprose http client for ASP.                            *
  *                                                        *
- * LastModified: Feb 18, 2014                             *
+ * LastModified: Mar 17, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -171,7 +171,7 @@ var HproseHttpClient = (function () {
         if (xmlhttp.status === 200) {
             var headers = xmlhttp.getAllResponseHeaders().split('\r\n');
             setCookie(headers, host);
-            return filter.inputFilter(xmlhttp.responseText);
+            return filter.inputFilter(xmlhttp.responseText, xmlhttp);
         }
         else {
             var error = xmlhttp.status + ':' +  xmlhttp.statusText;
@@ -231,7 +231,7 @@ var HproseHttpClient = (function () {
         if (cookie !== '') {
             xmlhttp.setRequestHeader('Cookie', cookie);
         }
-        xmlhttp.send(filter.outputFilter(data));
+        xmlhttp.send(filter.outputFilter(data, xmlhttp));
         if (callback) {
             return xmlhttp;
         }

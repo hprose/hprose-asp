@@ -14,7 +14,7 @@
  *                                                        *
  * hprose http server library for ASP.                    *
  *                                                        *
- * LastModified: Feb 17, 2014                             *
+ * LastModified: Mar 17, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -106,7 +106,7 @@ var HproseHttpServer = (function() {
             this.onSendHeader = null;
             this.onSendError = null;
 
-            function constructor() {
+            function constructor(service) {
                 var count = Request.totalBytes;
                 var bytes = Request.binaryRead(count);
                 var str = "";
@@ -115,22 +115,16 @@ var HproseHttpServer = (function() {
                 }
                 Session.CodePage = 65001;
                 Response.CodePage = 65001;
-                Response.Buffer = true;
                 if (m_filter) {
-                    str = m_filter.inputFilter(str);
+                    str = m_filter.inputFilter(str, service);
                 }
                 m_input = new HStringInputStream(str);
-                if (m_filter) {
-                    m_output = new HStringOutputStream();
-                }
-                else {
-                    m_output = Response;
-                }
+                m_output = new HStringOutputStream();
             }
 
             function sendHeader(service) {
                 if (service.onSendHeader !== null) {
-                    service.onSendHeader();
+                    service.onSendHeader(service);
                 }
                 Response.addHeader("Content-Type", "text/plain");
                 if (m_P3P) {
@@ -153,7 +147,7 @@ var HproseHttpServer = (function() {
 
             function sendError(service, error) {
                 if (service.onSendError !== null) {
-                    service.onSendError(error);
+                    service.onSendError(error, service);
                 }
                 m_output.clear();
                 m_output.write(HTags.TagError);
@@ -203,14 +197,14 @@ var HproseHttpServer = (function() {
                         }
                     }
                     if (service.onBeforeInvoke !== null) {
-                        service.onBeforeInvoke(name, args, byref);
+                        service.onBeforeInvoke(name, args, byref, service);
                     }
                     if (("*" in m_functions) && (func === m_functions["*"])) {
                         args = [name, args];
                     }
                     var result = callService(func.method, func.obj, func.context, args);
                     if (service.onAfterInvoke !== null) {
-                        service.onAfterInvoke(name, args, byref, result);
+                        service.onAfterInvoke(name, args, byref, result, service);
                     }
                     if (resultMode === HResultMode.RawWithEndTag) {
                         m_output.write(result);
@@ -440,6 +434,7 @@ var HproseHttpServer = (function() {
             };
             this.handle = function() {
                 Response.clear();
+                Response.Buffer = false;
                 sendHeader(this);
                 if ((String(Request.ServerVariables("REQUEST_METHOD")) === "GET") && m_get) {
                     doFunctionList();
@@ -447,13 +442,15 @@ var HproseHttpServer = (function() {
                 else if (String(Request.ServerVariables("REQUEST_METHOD")) === "POST") {
                     handle(this);
                 }
+                var data = m_output.toString();
                 if (m_filter) {
-                    Response.write(m_filter.outputFilter(m_output.toString()));
+                    data = m_filter.outputFilter(data, this);
                 }
+                Response.write(data);
                 Response.end();
             };
             this.start = this.handle;
-            constructor();
+            constructor(this);
         }
         HproseHttpServer.create = function() {
             return new HproseHttpServer(true);
