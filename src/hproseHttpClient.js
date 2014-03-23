@@ -14,7 +14,7 @@
  *                                                        *
  * hprose http client for ASP.                            *
  *                                                        *
- * LastModified: Mar 17, 2014                             *
+ * LastModified: Mar 23, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -167,11 +167,15 @@ var HproseHttpClient = (function () {
         return '';
     }
 
-    function getResponse(xmlhttp, host, filter, client) {
+    function getResponse(xmlhttp, host, filters, client) {
         if (xmlhttp.status === 200) {
             var headers = xmlhttp.getAllResponseHeaders().split('\r\n');
             setCookie(headers, host);
-            return filter.inputFilter(xmlhttp.responseText, client);
+            var data = xmlhttp.responseText;
+            for (var i = filters.length - 1; i >= 0; i--) {
+                data = filters[i].inputFilter(data, client);
+            }
+            return data;
         }
         else {
             var error = xmlhttp.status + ':' +  xmlhttp.statusText;
@@ -181,7 +185,7 @@ var HproseHttpClient = (function () {
         }
     }
 
-    function post(url, header, data, proxy, proxyUsername, proxyPassword, timeout, filter, client, callback) {
+    function post(url, header, data, proxy, proxyUsername, proxyPassword, timeout, filters, client, callback) {
         var host, path, secure, p;
         if (url.substr(0, 7).toLowerCase() === 'http://') {
             secure = false;
@@ -217,7 +221,7 @@ var HproseHttpClient = (function () {
             xmlhttp.open('POST', url, true);
             xmlhttp.onreadystatechange = function() {
                 if (xmlhttp.readyState === 4) {
-                    callback(getResponse(xmlhttp, host, filter, client));
+                    callback(getResponse(xmlhttp, host, filters, client));
                 }
             };
         }
@@ -231,12 +235,15 @@ var HproseHttpClient = (function () {
         if (cookie !== '') {
             xmlhttp.setRequestHeader('Cookie', cookie);
         }
-        xmlhttp.send(filter.outputFilter(data, client));
+        for (var i = 0, n = filters.length; i < n; i++) {
+            data = filters[i].outputFilter(data, client);
+        }
+        xmlhttp.send(data);
         if (callback) {
             return xmlhttp;
         }
         else {
-            return getResponse(xmlhttp, host, filter, client);
+            return getResponse(xmlhttp, host, filters, client);
         }
     }
 
@@ -251,7 +258,7 @@ var HproseHttpClient = (function () {
         var m_byref = false;
         var m_simple = false;
         var m_xhrs = [];
-        var m_filter = new HFilter();
+        var m_filters = [];
         var self = this;
         // public methods
         this.useService = function(url, functions, create) {
@@ -349,8 +356,31 @@ var HproseHttpClient = (function () {
             m_byref = value;
         };
 
-        this.setFilter = function(filter) {
-            m_filter = filter;
+        this.getFilter = function () {
+            if (m_filters.length === 0) {
+                return null;
+            }
+            return m_filters[0];
+        };
+
+        this.setFilter = function (filter) {
+            m_filters.length = 0;
+            if (filter !== undefined && filter !== null) {
+                m_filters.push(filter);
+            }
+        };
+
+        this.addFilter = function (filter) {
+            m_filters.push(filter);
+        };
+
+        this.removeFilter = function (filter) {
+            var i = m_filters.indexOf(filter);
+            if (i === -1) {
+                return false;
+            }
+            m_filters.splice(i, 1);
+            return true;
         };
 
         this.getSimpleMode = function() {
@@ -389,7 +419,7 @@ var HproseHttpClient = (function () {
         function useService(stub) {
             var response = post(m_url, m_header, HTags.TagEnd,
                                 m_proxy, m_proxyUsername, m_proxyPassword,
-                                m_timeout, m_filter, self);
+                                m_timeout, m_filters, self);
             var stream = new HStringInputStream(response);
             var hproseReader = new HReader(stream, true);
             var tag = hproseReader.checkTags(HTags.TagFunctions +
@@ -703,7 +733,7 @@ var HproseHttpClient = (function () {
                 var xhr_index = m_xhrs.length;
                  m_xhrs[xhr_index] = post(m_url, m_header, request,
                                m_proxy, m_proxyUsername, m_proxyPassword,
-                               m_timeout, m_filter, self, function(response) {
+                               m_timeout, m_filters, self, function(response) {
                     var result;
                     try {
                         result = getResult(response, func, args, resultMode);
@@ -725,7 +755,7 @@ var HproseHttpClient = (function () {
             else {
                 var response = post(m_url, m_header, request,
                                     m_proxy, m_proxyUsername, m_proxyPassword,
-                                    m_timeout, m_filter, self);
+                                    m_timeout, m_filters, self);
                 return getResult(response, func, args, resultMode);
             }
         }

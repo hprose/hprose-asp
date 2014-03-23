@@ -14,7 +14,7 @@
  *                                                        *
  * hprose http server library for ASP.                    *
  *                                                        *
- * LastModified: Mar 17, 2014                             *
+ * LastModified: Mar 23, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -98,7 +98,7 @@ var HproseHttpServer = (function() {
             var m_P3P = false;
             var m_get = true;
             var m_simple = false;
-            var m_filter = null;
+            var m_filters = [];
             var m_input;
             var m_output;
             this.onBeforeInvoke = null;
@@ -109,16 +109,16 @@ var HproseHttpServer = (function() {
             function constructor(service) {
                 var count = Request.totalBytes;
                 var bytes = Request.binaryRead(count);
-                var str = "";
+                var data = "";
                 if (count > 0) {
-                    str = HUtil.binaryToString(bytes);
+                    data = HUtil.binaryToString(bytes);
                 }
                 Session.CodePage = 65001;
                 Response.CodePage = 65001;
-                if (m_filter) {
-                    str = m_filter.inputFilter(str, service);
+                for (var i = m_filters.length - 1; i >= 0; i--) {
+                    data = m_filters[i].inputFilter(data, service);
                 }
-                m_input = new HStringInputStream(str);
+                m_input = new HStringInputStream(data);
                 m_output = new HStringOutputStream();
             }
 
@@ -432,6 +432,29 @@ var HproseHttpServer = (function() {
                 if (value === undefined) value = true;
                 m_simple = value;
             };
+            this.getFilter = function () {
+                if (m_filters.length === 0) {
+                    return null;
+                }
+                return m_filters[0];
+            };
+            this.setFilter = function (filter) {
+                m_filters.length = 0;
+                if (filter !== undefined && filter !== null) {
+                    m_filters.push(filter);
+                }
+            };
+            this.addFilter = function (filter) {
+                m_filters.push(filter);
+            };
+            this.removeFilter = function (filter) {
+                var i = m_filters.indexOf(filter);
+                if (i === -1) {
+                    return false;
+                }
+                m_filters.splice(i, 1);
+                return true;
+            };
             this.handle = function() {
                 Response.clear();
                 Response.Buffer = false;
@@ -443,8 +466,8 @@ var HproseHttpServer = (function() {
                     handle(this);
                 }
                 var data = m_output.toString();
-                if (m_filter) {
-                    data = m_filter.outputFilter(data, this);
+                for (var i = 0, n = m_filters.length; i < n; i++) {
+                    data = m_filters[i].outputFilter(data, this);
                 }
                 Response.write(data);
                 Response.end();
