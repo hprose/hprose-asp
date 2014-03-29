@@ -14,7 +14,7 @@
  *                                                        *
  * hprose io stream library for JavaScript.               *
  *                                                        *
- * LastModified: Mar 8, 2014                              *
+ * LastModified: Mar 29, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -206,26 +206,8 @@ var HproseRawReader, HproseReader, HproseWriter;
             HClassManager.register(cls, classname);
             return cls;
         }
-        function isDigit(value) {
-            switch (value) {
-            case 0:
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-            case 9:
-                return true;
-            }
-            return false;
-        }
-        function isInt32(value) {
-            return (value >= -2147483648) &&
-                   (value <= 2147483647) &&
-                   (Math.floor(value) === value);
+        function isNegZero(value) {
+            return (value === 0 && 1/value === -Infinity);
         }
         function isArray(value) {
             return (Object.prototype.toString.apply(value) === '[object Array]');
@@ -453,7 +435,10 @@ var HproseRawReader, HproseReader, HproseWriter;
                 }
             }
             function readLongWithoutTag() {
-                return stream.readuntil(HTags.TagSemicolon);
+                var s = stream.readuntil(HTags.TagSemicolon);
+                var l = parseInt(s, 10);
+                if (l.toString() === s) return l;
+                return s;
             }
             function readLong() {
                 var tag = stream.getc();
@@ -746,19 +731,19 @@ var HproseRawReader, HproseReader, HproseWriter;
         };
 
         var fakeWriterRefer = {
-            set: function (val) {},
-            write: function (stream, val) { return false; },
+            set: function () {},
+            write: function () { return false; },
             reset: function () {}
         };
 
-        var realWriterRefer = function () {
+        var realWriterRefer = function (stream) {
             var ref = new ActiveXObject('Scripting.Dictionary');
             var refcount = 0;
             return {
                 set: function (val) {
                     ref.Item(val) = refcount++;
                 },
-                write: function (stream, val) {
+                write: function (val) {
                     if (ref.Exists(val)) {
                         stream.write(HTags.TagRef + ref.Item(val) + HTags.TagSemicolon);
                         return true;
@@ -776,7 +761,7 @@ var HproseRawReader, HproseReader, HproseWriter;
         HproseWriter = function hproseWriter(stream, simple) {
             var classref = {};
             var fieldsref = [];
-            var refer = (simple ? fakeWriterRefer : realWriterRefer());
+            var refer = (simple ? fakeWriterRefer : realWriterRefer(stream));
             function serialize(variable) {
                 if (variable === undefined ||
                     variable === null ||
@@ -829,27 +814,44 @@ var HproseRawReader, HproseReader, HproseWriter;
                 }
             }
             function writeNumber(n) {
-                if (isDigit(n)) {
-                    stream.write(n);
+                n = n.valueOf();
+                if (isNegZero(n)) {
+                    stream.write(HTags.TagInteger + '-0' + HTags.TagSemicolon);
                 }
-                else if (isInt32(n)) {
-                    writeInteger(n);
+                else if (n === (n | 0)) {
+                    if (0 <= n && n <= 9) {
+                        stream.write('' + n);
+                    }
+                    else {
+                        stream.write(HTags.TagInteger + n + HTags.TagSemicolon);
+                    }
                 }
                 else {
                     writeDouble(n);
                 }
             }
             function writeInteger(i) {
-                stream.write(HTags.TagInteger + i + HTags.TagSemicolon);
-            }
-            function writeLong(l) {
-                stream.write(HTags.TagLong + l + HTags.TagSemicolon);
+                if (0 <= i && i <= 9) {
+                    stream.write('' + i);
+                }
+                else {
+                    if (i < -2147483648 || i > 2147483647) {
+                        stream.write(HTags.TagLong);
+                    }
+                    else {
+                        stream.write(HTags.TagInteger);
+                    }
+                    stream.write('' + i + HTags.TagSemicolon);
+                }
             }
             function writeDouble(d) {
                 if (isNaN(d)) {
                     writeNaN();
                 }
                 else if (isFinite(d)) {
+                    if (isNegZero(d)) {
+                        d = '-0';
+                    }
                     stream.write(HTags.TagDouble + d + HTags.TagSemicolon);
                 }
                 else {
@@ -871,7 +873,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagEmpty);
             }
             function writeBoolean(b) {
-                stream.write(b ? HTags.TagTrue : HTags.TagFalse);
+                stream.write(b.valueOf() ? HTags.TagTrue : HTags.TagFalse);
             }
             function writeUTCDate(date) {
                 refer.set(date);
@@ -890,7 +892,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagUTC);
             }
             function writeUTCDateWithRef(date) {
-                if (!refer.write(stream, date)) writeUTCDate(date);
+                if (!refer.write(date)) writeUTCDate(date);
             }
             function writeDate(date) {
                 refer.set(date);
@@ -921,7 +923,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagSemicolon);
             }
             function writeDateWithRef(date) {
-                if (!refer.write(stream, date)) writeDate(date);
+                if (!refer.write(date)) writeDate(date);
             }
             function writeTime(time) {
                 refer.set(time);
@@ -936,7 +938,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagSemicolon);
             }
             function writeTimeWithRef(time) {
-                if (!refer.write(stream, time)) writeTime(time);
+                if (!refer.write(time)) writeTime(time);
             }
             function writeUTF8Char(c) {
                 stream.write(HTags.TagUTF8Char + c);
@@ -948,7 +950,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                     HTags.TagQuote + s + HTags.TagQuote);
             }
             function writeStringWithRef(str) {
-                if (!refer.write(stream, str)) writeString(str);
+                if (!refer.write(str)) writeString(str);
             }
             function writeList(list) {
                 refer.set(list);
@@ -960,7 +962,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagClosebrace);
             }
             function writeListWithRef(list) {
-                if (!refer.write(stream, list)) writeList(list);
+                if (!refer.write(list)) writeList(list);
             }
             function writeDict(dict) {
                 refer.set(dict);
@@ -974,7 +976,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagClosebrace);
             }
             function writeDictWithRef(dict) {
-                if (!refer.write(stream, dict)) writeDict(dict);
+                if (!refer.write(dict)) writeDict(dict);
             }
             function writeMap(map) {
                 refer.set(map);
@@ -996,7 +998,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagClosebrace);
             }
             function writeMapWithRef(map) {
-                if (!refer.write(stream, map)) writeMap(map);
+                if (!refer.write(map)) writeMap(map);
             }
             function writeObject(obj) {
                 var classname = getClassName(obj);
@@ -1024,7 +1026,7 @@ var HproseRawReader, HproseReader, HproseWriter;
                 stream.write(HTags.TagClosebrace);
             }
             function writeObjectWithRef(obj) {
-                if (!refer.write(stream, obj)) writeObject(obj);
+                if (!refer.write(obj)) writeObject(obj);
             }
             function writeClass(classname, fields) {
                 var count = fields.length;
@@ -1047,12 +1049,7 @@ var HproseRawReader, HproseReader, HproseWriter;
             }
             this.serialize = serialize;
             this.writeInteger = writeInteger;
-            this.writeLong = writeLong;
             this.writeDouble = writeDouble;
-            this.writeNaN = writeNaN;
-            this.writeInfinity = writeInfinity;
-            this.writeNull = writeNull;
-            this.writeEmpty = writeEmpty;
             this.writeBoolean = writeBoolean;
             this.writeUTCDate = writeUTCDate;
             this.writeUTCDateWithRef = writeUTCDateWithRef;
