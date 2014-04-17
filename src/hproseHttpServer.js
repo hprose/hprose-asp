@@ -99,6 +99,8 @@ var HproseHttpServer = (function() {
             var m_get = true;
             var m_simple = false;
             var m_filters = [];
+            var m_origins = {};
+            var m_origincount = 0;
             var m_input;
             var m_output;
             this.onBeforeInvoke = null;
@@ -136,8 +138,10 @@ var HproseHttpServer = (function() {
                 if (m_crossDomain) {
                     var origin = String(Request.ServerVariables("HTTP_ORIGIN"));
                     if (origin && origin !== "null") {
-                        Response.addHeader("Access-Control-Allow-Origin", origin);
-                        Response.addHeader("Access-Control-Allow-Credentials", "true");
+                        if (m_origincount === 0 || m_origins[origin]) {
+                            Response.addHeader("Access-Control-Allow-Origin", origin);
+                            Response.addHeader("Access-Control-Allow-Credentials", "true");
+                        }
                     }
                     else {
                         Response.addHeader("Access-Control-Allow-Origin", "*");
@@ -455,6 +459,18 @@ var HproseHttpServer = (function() {
                 m_filters.splice(i, 1);
                 return true;
             };
+            this.addAccessControlAllowOrigin = function (origin) {
+                if (!m_origins[origin]) {
+                    m_origins[origin] = true;
+                    m_origincount++;
+                }
+            }
+            this.removeAccessControlAllowOrigin = function (origin) {
+                if (m_origins[origin]) {
+                    delete m_origins[origin];
+                    m_origincount++;
+                }
+            }
             this.handle = function() {
                 Response.clear();
                 Response.Buffer = false;
