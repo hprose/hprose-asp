@@ -14,7 +14,7 @@
  *                                                        *
  * hprose http server library for ASP.                    *
  *                                                        *
- * LastModified: Mar 23, 2014                             *
+ * LastModified: Apr 17, 2014                             *
  * Author: Ma Bingyao <andot@hprose.com>                  *
  *                                                        *
 \**********************************************************/
@@ -464,13 +464,13 @@ var HproseHttpServer = (function() {
                     m_origins[origin] = true;
                     m_origincount++;
                 }
-            }
+            };
             this.removeAccessControlAllowOrigin = function (origin) {
                 if (m_origins[origin]) {
                     delete m_origins[origin];
                     m_origincount++;
                 }
-            }
+            };
             this.handle = function() {
                 Response.clear();
                 Response.Buffer = false;
